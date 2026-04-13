@@ -10,7 +10,17 @@ import json
 from datetime import datetime
 import pytz
 
-# ===== 設定 =====
+# ===== 環境変数取得（安全版）=====
+CHANNEL_ACCESS_TOKEN = os.getenv("LINE_TOKEN")
+USER_ID = os.getenv("USER_ID")
+
+if not CHANNEL_ACCESS_TOKEN:
+    raise RuntimeError("LINE_TOKEN が設定されていません（GitHub Secrets を確認）")
+
+if not USER_ID:
+    raise RuntimeError("USER_ID が設定されていません（GitHub Secrets を確認）")
+
+# ===== 対象銘柄 =====
 CODES = {
     "7203.T": "トヨタ",
     "6758.T": "ソニー",
@@ -20,15 +30,11 @@ CODES = {
     "8267.T": "イオン",
 }
 
-CHANNEL_ACCESS_TOKEN = os.environ["LINE_TOKEN"]
-USER_ID = os.environ["USER_ID"]
-
 results = []
 
 for code, name in CODES.items():
     try:
         df = yf.download(code, period="3mo", progress=False)
-
         if df.empty:
             continue
 
@@ -37,7 +43,6 @@ for code, name in CODES.items():
         df["SMA75"] = ta.trend.sma_indicator(df["Close"], window=75)
 
         latest = df.iloc[-1]
-
         rsi = float(latest["RSI"])
         price = float(latest["Close"])
         sma25 = float(latest["SMA25"])
@@ -66,26 +71,23 @@ jst = pytz.timezone("Asia/Tokyo")
 now = datetime.now(jst).strftime("%Y/%m/%d %H:%M")
 
 if results:
-    message = "【株分析BOT｜" + now + "】\n\n" + "\n".join(results)
+    message = f"【株分析BOT｜{now}】\n\n" + "\n".join(results)
 else:
-    message = "【株分析BOT｜" + now + "】\n該当銘柄はありませんでした"
+    message = f"【株分析BOT｜{now}】\n該当銘柄はありませんでした"
 
 # ===== LINE送信 =====
 url = "https://api.line.me/v2/bot/message/push"
-
 headers = {
-    "Authorization": "Bearer " + CHANNEL_ACCESS_TOKEN,
-    "Content-Type": "application/json",
+    "Authorization": f"Bearer {CHANNEL_ACCESS_TOKEN}",
+    "Content-Type": "application/json"
 }
 
-data = {
+payload = {
     "to": USER_ID,
     "messages": [
-        {
-            "type": "text",
-            "text": message
-        }
-    ],
+        {"type": "text", "text": message}
+    ]
 }
 
-requests.post(url, headers=headers, data=json.dumps(data))
+requests.post(url, headers=headers, data=json.dumps(payload))
+``
