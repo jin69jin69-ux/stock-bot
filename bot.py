@@ -1,51 +1,72 @@
-# stock-bot（リポジトリ名）
-# ├─ bot.py
-# ===== ライブラリ =====
+# =========================================
+# 株自動分析BOT（RSI＋移動平均）
+# =========================================
 
+import os
 import yfinance as yf
 import ta
 import requests
 import json
+from datetime import datetime
+import pytz
 
-# ===== 設定 =====
+# ===== 銘柄 =====
 CODES = {
 "7203.T": "トヨタ",
 "6758.T": "ソニー",
-"9984.T": "ソフトバンク"
-“9432.T”: “NTT”
-“8267.T”:”イオン”
-“8766.T”:”東京海上ホールディングス”
+"9984.T": "ソフトバンク",
+"9432.T": "NTT",
+"8766.T": "東京海上HD",
+"8267.T": "イオン"
 }
 
 CHANNEL_ACCESS_TOKEN = os.environ["WmeRh9HpZbrsCYjMLD/hPdh5CLhx5a9fymTsDIKikD+zkYT4hFs5d54hMxWpDbllOY7ErDzNnZjE3+XcgajXB9p/ABJxVwK34r9mH4lVgVspqmQE3iQ7U0y7++h7IALBwsbyGiTcMagk+sWwCkNwKgdB04t89/1O/w1cDnyilFU="]
-
 USER_ID = os.environ["U2d78a497e58c747d311fee5b48ff3da8"]
 
 results = []
 
-# ===== 銘柄ごとに分析 =====
 for code, name in CODES.items():
+try:
 df = yf.download(code, period="3mo", progress=False)
-df["RSI"] = ta.momentum.rsi(df["Close"], window=14)
+if df.empty:
+continue
+
+df["RSI"] = ta.momentum.rsi(df["Close"], 14)
+df["SMA25"] = ta.trend.sma_indicator(df["Close"], 25)
+df["SMA75"] = ta.trend.sma_indicator(df["Close"], 75)
 
 latest = df.iloc[-1]
+rsi = float(latest["RSI"])
+price = float(latest["Close"])
+sma25 = float(latest["SMA25"])
+sma75 = float(latest["SMA75"])
 
-if latest["RSI"] < 30:
-judge = "売られすぎ"
-elif latest["RSI"] > 70:
-judge = "買われすぎ"
+if rsi < 30 and sma25 > sma75:
+judge = "🟢 買い時（反発＋上昇トレンド）"
+elif rsi > 70:
+judge = "🔴 売り時（過熱）"
 else:
-judge = "様子見"
+continue
 
 results.append(
-f"{name}（{code}）\n"
-f"終値：{round(latest['Close'],1)}円\n"
-f"RSI：{round(latest['RSI'],1)}\n"
-f"判定：{judge}\n"
+f"{name}\n"
+f"終値：{round(price,1)} 円\n"
+f"RSI：{round(rsi,1)}\n"
+f"25MA / 75MA：{round(sma25,1)} / {round(sma75,1)}\n"
+f"{judge}\n"
 )
 
-# ===== メッセージ作成 =====
-message = "【株分析BOT（複数銘柄）】\n\n" + "\n".join(results)
+except Exception:
+continue
+
+# ===== 時刻 =====
+jst = pytz.timezone("Asia/Tokyo")
+now = datetime.now(jst).strftime("%Y/%m/%d %H:%M")
+
+if results:
+message = f"【株分析BOT｜{now}】\n\n" + "\n".join(results)
+else:
+message = f"【株分析BOT｜{now}】\n該当銘柄なし"
 
 # ===== LINE送信 =====
 url = "https://api.line.me/v2/bot/message/push"
@@ -60,9 +81,3 @@ data = {
 }
 
 requests.post(url, headers=headers, data=json.dumps(data))
-
-print("✅ 複数銘柄をLINEに送信しました")
-├─ requirements.txt
-└─ .github/
-   └─ workflows/
-      └─ run.yml
