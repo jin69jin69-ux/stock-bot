@@ -1,5 +1,5 @@
 # =========================================
-# 株自動分析BOT（RSI＋移動平均・LINE通知）
+# 株自動分析BOT（RSI＋移動平均・全銘柄通知）
 # =========================================
 
 import os
@@ -10,17 +10,17 @@ import json
 from datetime import datetime
 import pytz
 
-# ===== 環境変数取得（安全版）=====
+# ===== 環境変数 =====
 CHANNEL_ACCESS_TOKEN = os.getenv("LINE_TOKEN")
 USER_ID = os.getenv("USER_ID")
 
 if not CHANNEL_ACCESS_TOKEN:
-    raise RuntimeError("LINE_TOKEN が設定されていません（GitHub Secrets を確認）")
+    raise RuntimeError("LINE_TOKEN が設定されていません")
 
 if not USER_ID:
-    raise RuntimeError("USER_ID が設定されていません（GitHub Secrets を確認）")
+    raise RuntimeError("USER_ID が設定されていません")
 
-# ===== 対象銘柄 =====
+# ===== 銘柄 =====
 CODES = {
     "7203.T": "トヨタ",
     "6758.T": "ソニー",
@@ -48,45 +48,11 @@ for code, name in CODES.items():
         sma25 = float(latest["SMA25"])
         sma75 = float(latest["SMA75"])
 
+        # ===== 判定 =====
         if rsi < 30 and sma25 > sma75:
             judge = "🟢 買い時（反発＋上昇トレンド）"
         elif rsi > 70:
             judge = "🔴 売り時（過熱）"
+        elif sma25 < sma75:
+            judge = "👀 要注意（下げトレンド）"
         else:
-            continue
-
-        results.append(
-            f"{name}\n"
-            f"終値：{round(price,1)} 円\n"
-            f"RSI：{round(rsi,1)}\n"
-            f"25MA / 75MA：{round(sma25,1)} / {round(sma75,1)}\n"
-            f"{judge}\n"
-        )
-
-    except Exception:
-        continue
-
-# ===== 日本時間 =====
-jst = pytz.timezone("Asia/Tokyo")
-now = datetime.now(jst).strftime("%Y/%m/%d %H:%M")
-
-if results:
-    message = f"【株分析BOT｜{now}】\n\n" + "\n".join(results)
-else:
-    message = f"【株分析BOT｜{now}】\n該当銘柄はありませんでした"
-
-# ===== LINE送信 =====
-url = "https://api.line.me/v2/bot/message/push"
-headers = {
-    "Authorization": f"Bearer {CHANNEL_ACCESS_TOKEN}",
-    "Content-Type": "application/json"
-}
-
-payload = {
-    "to": USER_ID,
-    "messages": [
-        {"type": "text", "text": message}
-    ]
-}
-
-requests.post(url, headers=headers, data=json.dumps(payload))
