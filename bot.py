@@ -20,8 +20,8 @@ CODES = {
     "8267.T": "イオン",
 }
 
-CHANNEL_ACCESS_TOKEN = os.environ[WmeRh9HpZbrsCYjMLD/hPdh5CLhx5a9fymTsDIKikD+zkYT4hFs5d54hMxWpDbllOY7ErDzNnZjE3+XcgajXB9p/ABJxVwK34r9mH4lVgVspqmQE3iQ7U0y7++h7IALBwsbyGiTcMagk+sWwCkNwKgdB04t89/1O/w1cDnyilFU="]
-USER_ID = os.environ["U2d78a497e58c747d311fee5b48ff3da8"]
+CHANNEL_ACCESS_TOKEN = os.environ["LINE_TOKEN"]
+USER_ID = os.environ["USER_ID"]
 
 results = []
 
