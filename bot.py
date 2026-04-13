@@ -1,5 +1,5 @@
 # =========================================
-# 株自動分析BOT（RSI＋移動平均・全銘柄通知）
+# 株自動分析BOT（RSI＋移動平均＋点数化＋前日比）
 # =========================================
 
 import os
@@ -35,24 +35,75 @@ results = []
 for code, name in CODES.items():
     try:
         df = yf.download(code, period="3mo", progress=False)
-        if df.empty:
+        if len(df) < 2:
             continue
 
+        # 指標
         df["RSI"] = ta.momentum.rsi(df["Close"], window=14)
         df["SMA25"] = ta.trend.sma_indicator(df["Close"], window=25)
         df["SMA75"] = ta.trend.sma_indicator(df["Close"], window=75)
 
         latest = df.iloc[-1]
-        rsi = float(latest["RSI"])
+        prev = df.iloc[-2]
+
         price = float(latest["Close"])
+        prev_price = float(prev["Close"])
+
+        rsi = float(latest["RSI"])
         sma25 = float(latest["SMA25"])
         sma75 = float(latest["SMA75"])
 
+        # ===== 前日比 =====
+        diff_price = price - prev_price
+        diff_percent = (diff_price / prev_price) * 100
+
+        # ===== スコア（0-100）=====
+        market_score = round(rsi)
+
         # ===== 判定 =====
         if rsi < 30 and sma25 > sma75:
-            judge = "🟢 買い時（反発＋上昇トレンド）"
+            judge = "🟢 買い時"
         elif rsi > 70:
-            judge = "🔴 売り時（過熱）"
+            judge = "🔴 売り時"
         elif sma25 < sma75:
-            judge = "👀 要注意（下げトレンド）"
+            judge = "👀 要注意"
         else:
+            judge = "👀 様子見"
+
+        results.append(
+            f"{name}\n"
+            f"終値：{round(price,1)} 円\n"
+            f"前日比：{round(diff_price,1)} 円（{round(diff_percent,2)}%）\n"
+            f"RSI：{round(rsi,1)}\n"
+            f"Market Score：{market_score} / 100\n"
+            f"25MA / 75MA：{round(sma25,1)} / {round(sma75,1)}\n"
+            f"判定：{judge}\n"
+        )
+
+    except Exception:
+        continue
+
+# ===== 日本時間 =====
+jst = pytz.timezone("Asia/Tokyo")
+now = datetime.now(jst).strftime("%Y/%m/%d %H:%M")
+
+message = f"【株分析BOT｜{now}】\n\n" + "\n".join(results)
+
+# ===== LINE送信 =====
+url = "https://api.line.me/v2/bot/message/push"
+headers = {
+    "Authorization": "Bearer " + CHANNEL_ACCESS_TOKEN,
+    "Content-Type": "application/json",
+}
+
+payload = {
+    "to": USER_ID,
+    "messages": [
+        {
+            "type": "text",
+            "text": message
+        }
+    ]
+}
+
+requests.post(url, headers=headers, data=json.dumps(payload))
