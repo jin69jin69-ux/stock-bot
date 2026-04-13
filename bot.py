@@ -1,7 +1,6 @@
-stock-bot（リポジトリ名）
-├─ bot.py ：
+# stock-bot（リポジトリ名）
+# ├─ bot.py
 # ===== ライブラリ =====
-!pip install yfinance ta requests
 
 import yfinance as yf
 import ta
@@ -18,9 +17,9 @@ CODES = {
 “8766.T”:”東京海上ホールディングス”
 }
 
-CHANNEL_ACCESS_TOKEN = "WmeRh9HpZbrsCYjMLD/hPdh5CLhx5a9fymTsDIKikD+zkYT4hFs5d54hMxWpDbllOY7ErDzNnZjE3+XcgajXB9p/ABJxVwK34r9mH4lVgVspqmQE3iQ7U0y7++h7IALBwsbyGiTcMagk+sWwCkNwKgdB04t89/1O/w1cDnyilFU="
+CHANNEL_ACCESS_TOKEN = os.environ["WmeRh9HpZbrsCYjMLD/hPdh5CLhx5a9fymTsDIKikD+zkYT4hFs5d54hMxWpDbllOY7ErDzNnZjE3+XcgajXB9p/ABJxVwK34r9mH4lVgVspqmQE3iQ7U0y7++h7IALBwsbyGiTcMagk+sWwCkNwKgdB04t89/1O/w1cDnyilFU="]
 
-USER_ID = "U2d78a497e58c747d311fee5b48ff3da8"
+USER_ID = os.environ["U2d78a497e58c747d311fee5b48ff3da8"]
 
 results = []
 
