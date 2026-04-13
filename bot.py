@@ -1,5 +1,5 @@
 # =========================================
-# 株自動分析BOT（RSI＋移動平均）
+# 株自動分析BOT（RSI＋移動平均・LINE通知）
 # =========================================
 
 import os
@@ -10,33 +10,34 @@ import json
 from datetime import datetime
 import pytz
 
-# ===== 銘柄 =====
+# ===== 設定 =====
 CODES = {
     "7203.T": "トヨタ",
     "6758.T": "ソニー",
     "9984.T": "ソフトバンク",
     "9432.T": "NTT",
     "8766.T": "東京海上HD",
-    "8267.T": "イオン"
+    "8267.T": "イオン",
 }
 
-CHANNEL_ACCESS_TOKEN = os.environ["WmeRh9HpZbrsCYjMLD/hPdh5CLhx5a9fymTsDIKikD+zkYT4hFs5d54hMxWpDbllOY7ErDzNnZjE3+XcgajXB9p/ABJxVwK34r9mH4lVgVspqmQE3iQ7U0y7++h7IALBwsbyGiTcMagk+sWwCkNwKgdB04t89/1O/w1cDnyilFU="]
+CHANNEL_ACCESS_TOKEN = os.environ[WmeRh9HpZbrsCYjMLD/hPdh5CLhx5a9fymTsDIKikD+zkYT4hFs5d54hMxWpDbllOY7ErDzNnZjE3+XcgajXB9p/ABJxVwK34r9mH4lVgVspqmQE3iQ7U0y7++h7IALBwsbyGiTcMagk+sWwCkNwKgdB04t89/1O/w1cDnyilFU="]
 USER_ID = os.environ["U2d78a497e58c747d311fee5b48ff3da8"]
 
 results = []
 
-#
 for code, name in CODES.items():
     try:
         df = yf.download(code, period="3mo", progress=False)
+
         if df.empty:
             continue
 
-        df["RSI"] = ta.momentum.rsi(df["Close"], 14)
-        df["SMA25"] = ta.trend.sma_indicator(df["Close"], 25)
-        df["SMA75"] = ta.trend.sma_indicator(df["Close"], 75)
+        df["RSI"] = ta.momentum.rsi(df["Close"], window=14)
+        df["SMA25"] = ta.trend.sma_indicator(df["Close"], window=25)
+        df["SMA75"] = ta.trend.sma_indicator(df["Close"], window=75)
 
         latest = df.iloc[-1]
+
         rsi = float(latest["RSI"])
         price = float(latest["Close"])
         sma25 = float(latest["SMA25"])
@@ -60,26 +61,31 @@ for code, name in CODES.items():
     except Exception:
         continue
 
-# ===== 時刻 =====
+# ===== 日本時間 =====
 jst = pytz.timezone("Asia/Tokyo")
 now = datetime.now(jst).strftime("%Y/%m/%d %H:%M")
 
 if results:
-    message = f"【株分析BOT｜{now}】\n\n" + "\n".join(results)
+    message = "【株分析BOT｜" + now + "】\n\n" + "\n".join(results)
 else:
-    message = f"【株分析BOT｜{now}】\n該当銘柄なし"
+    message = "【株分析BOT｜" + now + "】\n該当銘柄はありませんでした"
 
 # ===== LINE送信 =====
 url = "https://api.line.me/v2/bot/message/push"
+
 headers = {
-    "Authorization": f"Bearer {CHANNEL_ACCESS_TOKEN}",
-    "Content-Type": "application/json"
+    "Authorization": "Bearer " + CHANNEL_ACCESS_TOKEN,
+    "Content-Type": "application/json",
 }
 
 data = {
     "to": USER_ID,
-    "messages": [{"type": "text", "text": message}]
+    "messages": [
+        {
+            "type": "text",
+            "text": message
+        }
+    ],
 }
 
 requests.post(url, headers=headers, data=json.dumps(data))
-``
